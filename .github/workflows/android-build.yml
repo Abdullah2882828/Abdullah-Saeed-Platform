@@ -50,7 +50,7 @@ jobs:
           fi
           
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          npx cap init "Note App" "com.abdullah.noteapp" --web-dir dist
+          npx cap init "Abdullah saeed" "com.abdullah.abdullahsaeed" --web-dir dist
           
           
           
