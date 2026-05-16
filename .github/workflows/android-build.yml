@@ -50,7 +50,7 @@ jobs:
           fi
           
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          npx cap init "TikSaver" "com.abdullah.tiksaver" --web-dir dist
+          npx cap init "TikSaverYAMLTest" "com.abdullah.tiksaveryamltest" --web-dir dist
           
           # Generate custom icon
           if [ -f "assets/icon.png" ]; then
@@ -76,33 +76,42 @@ jobs:
           MAIN_ACTIVITY_PATH=$(find android/app/src/main/java -name "MainActivity.java" | head -n 1)
           if [ ! -z "$MAIN_ACTIVITY_PATH" ]; then
              echo "Patching $MAIN_ACTIVITY_PATH"
-             sed -i 's/import com.getcapacitor.BridgeActivity;/import com.getcapacitor.BridgeActivity;
-import android.webkit.DownloadListener;
-import android.app.DownloadManager;
-import android.net.Uri;
-import android.os.Environment;/' "$MAIN_ACTIVITY_PATH"
-             sed -i '/public class MainActivity extends BridgeActivity {/a     @Override
-    public void onResume() {
-        super.onResume();
-        if (this.bridge != null && this.bridge.getWebView() != null) {
-            this.bridge.getWebView().setDownloadListener(new DownloadListener() {
-                @Override
-                public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                    try {
-                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                        request.setMimeType(mimetype);
-                        request.addRequestHeader("User-Agent", userAgent);
-                        request.setDescription("Downloading file...");
-                        request.setTitle("TikSaver_Media_" + System.currentTimeMillis());
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "TikSaver_" + System.currentTimeMillis() + ".mp4");
-                        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                        dm.enqueue(request);
-                    } catch (Exception e) { e.printStackTrace(); }
-                }
-            });
-        }
-    }' "$MAIN_ACTIVITY_PATH"
+             node -e "
+               const fs = require('fs');
+               const path = process.argv[1];
+               let content = fs.readFileSync(path, 'utf8');
+               content = content.replace('import com.getcapacitor.BridgeActivity;',
+                 'import com.getcapacitor.BridgeActivity;\nimport android.webkit.DownloadListener;\nimport android.app.DownloadManager;\nimport android.net.Uri;\nimport android.os.Environment;'
+               );
+               if (!content.includes('onResume')) {
+                 content = content.replace('public class MainActivity extends BridgeActivity {',
+                   'public class MainActivity extends BridgeActivity {\n' +
+                   '    @Override\n' +
+                   '    public void onResume() {\n' +
+                   '        super.onResume();\n' +
+                   '        if (this.bridge != null && this.bridge.getWebView() != null) {\n' +
+                   '            this.bridge.getWebView().setDownloadListener(new DownloadListener() {\n' +
+                   '                @Override\n' +
+                   '                public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {\n' +
+                   '                    try {\n' +
+                   '                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));\n' +
+                   '                        request.setMimeType(mimetype);\n' +
+                   '                        request.addRequestHeader(\"User-Agent\", userAgent);\n' +
+                   '                        request.setDescription(\"Downloading file...\");\n' +
+                   '                        request.setTitle(\"TikSaver_Media_\" + System.currentTimeMillis());\n' +
+                   '                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);\n' +
+                   '                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, \"TikSaver_\" + System.currentTimeMillis() + \".mp4\");\n' +
+                   '                        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);\n' +
+                   '                        dm.enqueue(request);\n' +
+                   '                    } catch (Exception e) { e.printStackTrace(); }\n' +
+                   '                }\n' +
+                   '            });\n' +
+                   '        }\n' +
+                   '    }'
+                 );
+               }
+               fs.writeFileSync(path, content);
+             " "$MAIN_ACTIVITY_PATH"
           fi
           
           npx cap copy android
