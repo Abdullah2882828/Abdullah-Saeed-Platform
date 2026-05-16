@@ -50,7 +50,7 @@ jobs:
           fi
           
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          npx cap init "TikSaverCLI" "com.abdullah.tiksavercli" --web-dir dist
+          npx cap init "TikSaver" "com.abdullah.tiksaver" --web-dir dist
           
           # Generate custom icon
           if [ -f "assets/icon.png" ]; then
