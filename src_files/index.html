@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <meta name="theme-color" content="#0d0d1a">
     <meta name="description" content="Abdullah Saeed - بيئة تطوير متكاملة احترافية">
     <title>Abdullah Saeed - بيئة التطوير المتكاملة</title>
@@ -58,12 +58,30 @@
             display: flex;
             flex-direction: column;
             user-select: none;
+            -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
             -webkit-font-smoothing: antialiased;
             background-image:
                 radial-gradient(ellipse at 20% 20%, rgba(108, 92, 231, 0.08) 0%, transparent 60%),
                 radial-gradient(ellipse at 80% 60%, rgba(0, 212, 170, 0.05) 0%, transparent 50%),
                 radial-gradient(ellipse at 50% 80%, rgba(108, 92, 231, 0.04) 0%, transparent 55%);
+        }
+
+        /* تحسين اللمس العام */
+        button, .btn, .file-item, .editor-tab, .file-del {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+
+        /* السماح بتحديد النص داخل المحرر فقط */
+        .code-textarea, .line-numbers {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        /* تمرير سلس على الأجهزة اللمسية */
+        .sidebar, .file-list, .editor-tabs, .code-textarea, .preview-iframe {
+            -webkit-overflow-scrolling: touch;
         }
 
         /* ============ HEADER ============ */
@@ -123,10 +141,11 @@
             font-weight: 600;
             transition: var(--transition);
             white-space: nowrap;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 5px;
             letter-spacing: 0.1px;
+            text-decoration: none;
         }
         .btn:hover {
             background: var(--surface-hover);
@@ -329,6 +348,7 @@
             line-height: 1.65;
             overflow-y: hidden;
             user-select: none;
+            -webkit-user-select: none;
             border-left: 1px solid var(--border);
             flex-shrink: 0;
             pointer-events: none;
@@ -415,6 +435,7 @@
             transition: var(--transition);
             flex-shrink: 0;
             position: relative;
+            touch-action: none;
         }
         .resize-handle:hover,
         .resize-handle.active {
@@ -519,6 +540,7 @@
             gap: 8px;
             justify-content: flex-end;
             margin-top: 6px;
+            flex-wrap: wrap;
         }
         @keyframes fadeIn {
             from {
@@ -735,7 +757,7 @@
                 <button class="btn btn-sm" onclick="refreshPreview()" title="تحديث">🔄</button>
                 <button class="btn btn-sm" onclick="togglePreview()" title="إغلاق">✕</button>
             </div>
-            <iframe class="preview-iframe" id="previewIframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads" title="معاينة"></iframe>
+            <iframe class="preview-iframe" id="previewIframe" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads" title="معاينة"></iframe>
         </div>
 
         <!-- RESIZE HANDLE -->
@@ -775,12 +797,12 @@
         (function() {
             // ==================== APP STATE ====================
             const APP_NAME = 'Abdullah Saeed';
-            const APP_VERSION = '3.0.0';
+            const APP_VERSION = '3.0.1';
 
             let state = {
                 projects: {},
                 currentProjectId: 'default',
-                files: [], // {id, name, type, content}
+                files: [],
                 activeFileId: null,
                 sidebarOpen: true,
                 previewOpen: true,
@@ -846,7 +868,6 @@
                     }
                 });
 
-                // Handle window resize for mobile
                 window.addEventListener('resize', handleResize);
                 handleResize();
 
@@ -857,11 +878,26 @@
             }
 
             function handleResize() {
-                if (window.innerWidth <= 850) {
+                const mobile = window.innerWidth <= 850;
+                if (mobile) {
+                    // على الجوال، إذا كان كلا اللوحين مفتوحين، نغلق المعاينة تلقائياً
                     if (state.sidebarOpen && state.previewOpen) {
                         state.previewOpen = false;
                         previewPanel.classList.remove('open');
                     }
+                    // نتأكد أن السايدبار في وضعية الفتح الصحيحة
+                    sidebar.classList.toggle('open', state.sidebarOpen);
+                    previewPanel.classList.toggle('open', state.previewOpen);
+                } else {
+                    // شاشة كبيرة: إعادة التعيين إلى العرض الطبيعي
+                    sidebar.style.display = state.sidebarOpen ? 'flex' : 'none';
+                    sidebar.style.minWidth = state.sidebarOpen ? '260px' : '0';
+                    sidebar.style.width = state.sidebarOpen ? '260px' : '0';
+                    previewPanel.style.display = state.previewOpen ? 'flex' : 'none';
+                    previewPanel.style.width = '45%';
+                    previewPanel.style.minWidth = '320px';
+                    sidebar.classList.remove('open');
+                    previewPanel.classList.remove('open');
                 }
                 updateMobileNav();
             }
@@ -1016,7 +1052,6 @@
             }
 
             function setActiveFile(fileId) {
-                // Save current content first
                 saveCurrentFileContent();
                 state.activeFileId = fileId;
                 const file = getActiveFile();
@@ -1131,7 +1166,6 @@
                 let cssContent = cssFiles.map(f => f.content).join('\n');
                 let jsContent = jsFiles.map(f => f.content).join('\n');
 
-                // Inject CSS and JS into HTML if not already present
                 let finalHtml = htmlContent;
                 if (cssContent && !finalHtml.includes('<style>') && !finalHtml.includes('style.css')) {
                     finalHtml = finalHtml.replace('</head>',
@@ -1141,7 +1175,6 @@
                     finalHtml = finalHtml.replace('</body>',
                         '<script id="abdullah-injected-js">\n' + jsContent + '\n<\/script>\n</body>');
                 }
-                // If no head/body tags, wrap
                 if (!finalHtml.includes('<head') && !finalHtml.includes('<body')) {
                     finalHtml = `<!DOCTYPE html>\n<html><head><meta charset="UTF-8"><style>${cssContent}</style></head><body>${finalHtml}<script>${jsContent}<\/script></body></html>`;
                 }
@@ -1152,20 +1185,12 @@
                 previewUrl.textContent = 'localhost:5500/' + (htmlFile ? htmlFile.name : 'index.html');
                 statusServer.textContent = 'نشط';
                 statusServer.style.color = 'var(--success)';
-
-                // Cleanup old blob
-                setTimeout(() => {
-                    if (previewIframe.src && previewIframe.src.startsWith('blob:')) {
-                        // Keep the current one, old ones get GC'd
-                    }
-                }, 1000);
             }
 
             function refreshPreview() {
                 saveCurrentFileContent();
                 updatePreview();
                 showToast('🔄 تم تحديث المعاينة - السيرفر يعمل');
-                // Pulse effect
                 previewPanel.style.boxShadow = '0 0 30px rgba(0,212,170,0.5)';
                 setTimeout(() => { previewPanel.style.boxShadow = ''; }, 600);
             }
@@ -1260,25 +1285,4 @@
 
                 document.getElementById('permNotify').addEventListener('click', () => {
                     if ('Notification' in window) {
-                        Notification.requestPermission().then(p => {
-                            showToast('🔔 حالة الإشعارات: ' + p);
-                        });
-                    } else {
-                        showToast('⚠️ الإشعارات غير مدعومة في هذا المتصفح');
-                    }
-                });
-                document.getElementById('permGeo').addEventListener('click', () => {
-                    if ('geolocation' in navigator) {
-                        navigator.geolocation.getCurrentPosition(
-                            () => showToast('📍 تم الحصول على الموقع بنجاح'),
-                            () => showToast('⚠️ تم رفض إذن الموقع'),
-                            { timeout: 5000 }
-                        );
-                    } else {
-                        showToast('⚠️ الموقع غير مدعوم');
-                    }
-                });
-                document.getElementById('permStorage').addEventListener('click', () => {
-                    const used = new Blob([JSON.stringify(state.projects)]).size;
-                    const available = 5 * 1024 * 1024; // ~5MB estimate
-                    showToast('💾 المستخدم: ' + (used / 1024).toFixed(1) + ' KB | المتاح ~5 M
+                        Notifi
