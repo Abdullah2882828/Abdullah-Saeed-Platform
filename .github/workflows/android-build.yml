@@ -1,0 +1,86 @@
+name: Compile APK
+on:
+  repository_dispatch:
+    types: [build_apk]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Prepare Capacitor App
+        run: |
+          mkdir -p build_output
+          cp -r src_files/* build_output/ || true
+          cd build_output
+          
+          # Initialize or Install
+          if [ ! -f "package.json" ]; then
+            npm init -y
+          else
+            npm install --legacy-peer-deps
+          fi
+          
+          # Build Web Files
+          if grep -q '"build":' package.json; then
+            npm run build || true
+          fi
+          
+          # Ensure dist folder exists for Capacitor and contains the web app
+          if [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; then
+            mkdir -p dist
+            echo "Copying raw web files to dist..."
+            # Copy all files from src_files directly to dist as fallback
+            cp -r ../src_files/* dist/ || true
+          fi
+          
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npx cap init "TikSaver" "com.abdullah.tiksaver" --web-dir dist
+          
+          # Generate custom icon
+          if [ -f "assets/icon.png" ]; then
+             echo "Using custom uploaded icon..."
+          elif [ -f "assets/icon.svg" ]; then
+             echo "Using custom uploaded SVG icon..."
+          else
+             echo "Generating default SVG icon..."
+             mkdir -p assets
+             cat << 'EOF' > assets/icon.svg
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="background:#1e3a8a;">
+            <path fill="#fff" d="M412 114v80c-44 0-83 17-111 44v149c0 78-63 141-141 141S18 465 18 387s63-141 141-141c10 0 20 1 30 3V332c-10-3-20-5-30-5-34 0-61 27-61 61s27 61 61 61 61-27 61-61V18h80c0 44 36 80 80 80v-80h32v96z"/>
+          </svg>
+EOF
+          fi
+          
+          npm install -g @capacitor/assets
+          npx @capacitor/assets generate --assetPath assets --iconBackgroundColor '#1e3a8a' || echo "Icon generation failed/skipped"
+          
+          npx cap add android
+          npx cap copy android
+          npx cap sync android
+          
+          cd android
+          chmod +x gradlew
+          export _JAVA_OPTIONS="-Xmx2048m"
+          ./gradlew assembleDebug --no-daemon
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: build_output/android/app/build/outputs/apk/debug/app-debug.apk
