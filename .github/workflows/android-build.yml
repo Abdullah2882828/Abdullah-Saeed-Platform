@@ -58,13 +58,9 @@ jobs:
           elif [ -f "assets/icon.svg" ]; then
              echo "Using custom uploaded SVG icon..."
           else
-             echo "Generating default SVG icon..."
+             echo 'Generating default SVG icon...'
              mkdir -p assets
-             cat << 'EOF' > assets/icon.svg
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="background:#1e3a8a;">
-            <path fill="#fff" d="M412 114v80c-44 0-83 17-111 44v149c0 78-63 141-141 141S18 465 18 387s63-141 141-141c10 0 20 1 30 3V332c-10-3-20-5-30-5-34 0-61 27-61 61s27 61 61 61 61-27 61-61V18h80c0 44 36 80 80 80v-80h32v96z"/>
-          </svg>
-EOF
+             echo '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="background:#1e3a8a;"><path fill="#fff" d="M412 114v80c-44 0-83 17-111 44v149c0 78-63 141-141 141S18 465 18 387s63-141 141-141c10 0 20 1 30 3V332c-10-3-20-5-30-5-34 0-61 27-61 61s27 61 61 61 61-27 61-61V18h80c0 44 36 80 80 80v-80h32v96z"/></svg>' > assets/icon.svg
           fi
           
           npm install -g @capacitor/assets
