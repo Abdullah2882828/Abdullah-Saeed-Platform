@@ -12,7 +12,6 @@ jobs:
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - name: Checkout Repository
         uses: actions/checkout@v4
       - name: Setup Node
@@ -51,7 +50,7 @@ jobs:
           fi
           
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          npx cap init "TestApp" "com.abdullah.testapp" --web-dir dist
+          npx cap init "TikSaverCLI" "com.abdullah.tiksavercli" --web-dir dist
           
           # Generate custom icon
           if [ -f "assets/icon.png" ]; then
