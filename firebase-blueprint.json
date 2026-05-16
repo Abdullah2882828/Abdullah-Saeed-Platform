@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A coding project in the IDE",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "number", "description": "Timestamp" },
+        "updatedAt": { "type": "number", "description": "Timestamp" },
+        "version": { "type": "number" }
+      },
+      "required": ["userId", "name", "createdAt", "updatedAt"]
+    },
+    "File": {
+      "title": "File",
+      "description": "A file within a project",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "path": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["projectId", "path", "content", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User projects"
+    },
+    "/projects/{projectId}/files/{fileId}": {
+      "schema": { "$ref": "#/entities/File" },
+      "description": "Files within a project"
+    }
+  }
+}

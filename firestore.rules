@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null && request.auth.uid != null; }
+
+    // Project Validation
+    function isValidProject(data) {
+      return data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt']) 
+        && data.size() >= 4 && data.size() <= 6
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // File Validation
+    function isValidFile(data, projectId) {
+      return data.keys().hasAll(['projectId', 'path', 'content', 'createdAt', 'updatedAt'])
+        && data.size() >= 5 && data.size() <= 6
+        && data.projectId == projectId
+        && data.path is string && data.path.size() > 0 && data.path.size() <= 500
+        && data.content is string && data.content.size() <= 500000 // up to 500kb per file
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Projects Collection
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && isValidId(projectId) 
+        && isValidProject(incoming()) 
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+        
+      allow update: if isSignedIn() && isValidId(projectId) 
+        && isValidProject(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt', 'version'])
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+        
+      allow delete: if isSignedIn() && isValidId(projectId) && existing().userId == request.auth.uid;
+
+      // Files Subcollection
+      match /files/{fileId} {
+        function getProject() {
+          return get(/databases/$(database)/documents/projects/$(projectId));
+        }
+        function isProjectOwner() {
+          let proj = getProject();
+          return proj != null && proj.data.userId == request.auth.uid;
+        }
+
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(fileId) && isProjectOwner();
+        allow list: if isSignedIn() && isValidId(projectId) && isProjectOwner();
+
+        allow create: if isSignedIn() && isValidId(projectId) && isValidId(fileId)
+          && isProjectOwner()
+          && isValidFile(incoming(), projectId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isSignedIn() && isValidId(projectId) && isValidId(fileId)
+          && isProjectOwner()
+          && isValidFile(incoming(), projectId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'path', 'updatedAt'])
+          && incoming().projectId == existing().projectId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+
+        allow delete: if isSignedIn() && isValidId(projectId) && isValidId(fileId) && isProjectOwner();
+      }
+    }
+  }
+}
