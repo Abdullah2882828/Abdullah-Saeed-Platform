@@ -64,9 +64,47 @@ jobs:
           fi
           
           npm install -g @capacitor/assets
-          npx @capacitor/assets generate --assetPath assets --iconBackgroundColor '#1e3a8a' || echo "Icon generation failed/skipped"
           
           npx cap add android
+          
+          # Wait until the android directory is properly created
+          sleep 2
+          
+          npx @capacitor/assets generate --assetPath assets --iconBackgroundColor '#1e3a8a' --android || echo "Icon generation failed/skipped"
+          
+          # Patch MainActivity.java to support file downloads via WebView DownloadListener and DownloadManager
+          MAIN_ACTIVITY_PATH=$(find android/app/src/main/java -name "MainActivity.java" | head -n 1)
+          if [ ! -z "$MAIN_ACTIVITY_PATH" ]; then
+             echo "Patching $MAIN_ACTIVITY_PATH"
+             sed -i 's/import com.getcapacitor.BridgeActivity;/import com.getcapacitor.BridgeActivity;
+import android.webkit.DownloadListener;
+import android.app.DownloadManager;
+import android.net.Uri;
+import android.os.Environment;/' "$MAIN_ACTIVITY_PATH"
+             sed -i '/public class MainActivity extends BridgeActivity {/a     @Override
+    public void onResume() {
+        super.onResume();
+        if (this.bridge != null && this.bridge.getWebView() != null) {
+            this.bridge.getWebView().setDownloadListener(new DownloadListener() {
+                @Override
+                public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+                    try {
+                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                        request.setMimeType(mimetype);
+                        request.addRequestHeader("User-Agent", userAgent);
+                        request.setDescription("Downloading file...");
+                        request.setTitle("TikSaver_Media_" + System.currentTimeMillis());
+                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "TikSaver_" + System.currentTimeMillis() + ".mp4");
+                        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                        dm.enqueue(request);
+                    } catch (Exception e) { e.printStackTrace(); }
+                }
+            });
+        }
+    }' "$MAIN_ACTIVITY_PATH"
+          fi
+          
           npx cap copy android
           npx cap sync android
           
