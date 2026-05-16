@@ -50,7 +50,22 @@ jobs:
           fi
           
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-          npx cap init "Note App" "com.abdullah.noteapp" --web-dir dist
+          npx cap init "Abdullah Platform" "com.abdullah.abdullahplatform" --web-dir dist
+          
+          
+          # Setup Live Sync / WebView wrapper
+          echo "import { CapacitorConfig } from '@capacitor/cli';
+          const config: CapacitorConfig = {
+            appId: 'com.abdullah.abdullahplatform',
+            appName: 'Abdullah Platform',
+            webDir: 'dist',
+            server: {
+              url: 'https://ais-pre-ebannvurs77alk22mzpqk4-772748206956.europe-west2.run.app',
+              cleartext: true
+            }
+          };
+          export default config;" > capacitor.config.ts
+          
           
           # Generate custom icon
           if [ -f "assets/icon.png" ]; then
@@ -75,8 +90,8 @@ jobs:
           # Patch build.gradle to set custom version (default version passed by Platform)
           APP_GRADLE_PATH="android/app/build.gradle"
           if [ -f "$APP_GRADLE_PATH" ]; then
-             echo "Patching version in $APP_GRADLE_PATH to 1.0.0"
-             sed -i "s/versionName ".*"/versionName "1.0.0"/" "$APP_GRADLE_PATH"
+             echo "Patching version in $APP_GRADLE_PATH to 2.0.0"
+             sed -i "s/versionName ".*"/versionName "2.0.0"/" "$APP_GRADLE_PATH"
           fi
           
           # Patch MainActivity.java to support file downloads via WebView DownloadListener and DownloadManager
